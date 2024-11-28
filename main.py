@@ -1,10 +1,10 @@
-#import smtplib
-#from email.mime.text import MIMEText
-#import os
-#from dotenv import load_dotenv
+import smtplib
+from email.mime.text import MIMEText
+import os
+from dotenv import load_dotenv
 from bs4 import BeautifulSoup
 import requests
-from rich.console import Console 
+from rich.console import Console
 import datetime
 import time
 
@@ -12,28 +12,38 @@ from rich.table import Table
 
 console = Console()
 rows = []
-#load_dotenv()
-
-#def construct_email_message(first_name):
-#    sender = os.getenv("EMAIL_FROM_ADDRESS")
-#    recipient = os.getenv("EMAIL_TO_ADDRESS")
-#    password = os.getenv("EMAIL_PASSWORD")
-#    subject = "Birthday"
-#    body = f"Today is {first_name}'s birthday!"
-#    msg = MIMEText(body)
-#    msg['Subject'] = subject
-#    msg['From'] = sender
-#    msg['To'] = recipient
-#    return msg
-#
-#def send_email_with_smtp(msg):
-#    with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp_server:
-#        smtp_server.login(os.getenv("EMAIL_FROM_ADDRESS"), os.getenv("EMAIL_PASSWORD"))
-#        smtp_server.sendmail(msg['From'], msg['To'], msg.as_string())
+load_dotenv()
 
 
+def construct_email_message(subject: str, body: str):
+    try:
+        sender = str(os.getenv("EMAIL_FROM_ADDRESS"))
+        recipient = str(os.getenv("EMAIL_TO_ADDRESS"))
+        subject = subject
+        body = body
+        msg = MIMEText(body)
+        msg["Subject"] = subject
+        msg["From"] = sender
+        msg["To"] = recipient
+        return msg
+    except Exception as e:
+        raise Exception(f"Error in constructing the email message {e}")
 
-def check_prices(table):
+
+def send_email_with_smtp(msg):
+    try:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp_server:
+            smtp_server.login(
+                os.getenv("EMAIL_FROM_ADDRESS"), os.getenv("EMAIL_PASSWORD")
+            )
+            smtp_server.sendmail(msg["From"], msg["To"], msg.as_string())
+    except smtplib.SMTPException as e:
+        raise Exception(f"SMTP error: {e}")
+    except Exception as e:
+        raise Exception(f"An unexpected error occurred: {e}")
+
+
+def check_prices():
     urls = [
         "https://www.crema.fi/fi/products/1zpresso/j-ultra-foldable-grinder/12264",
         "https://www.crema.fi/fi/products/lucaffe/mamma-lucia/364",
@@ -43,7 +53,7 @@ def check_prices(table):
         "https://www.crema.fi/fi/products/fellow/stagg-ekg-pour-over-kettle/3924",
         "https://www.crema.fi/fi/products/timemore/glass-server/3640",
         "https://www.crema.fi/fi/products/fellow/stagg-double-wall-carafe/2575",
-        "https://www.crema.fi/fi/products/hario/v60-barista-server/13117"
+        "https://www.crema.fi/fi/products/hario/v60-barista-server/13117",
     ]
     while True:
         table = build_table()
@@ -53,9 +63,9 @@ def check_prices(table):
                 if response.status_code == 200:
                     page_content = response.content
 
-                    soup = BeautifulSoup(page_content, 'html.parser')
+                    soup = BeautifulSoup(page_content, "html.parser")
 
-                    product_name = soup.find('h1')
+                    product_name = soup.find("h1")
 
                     normal_price = soup.select("[id^='normal-price']")
                     discount_price = soup.select("[id^='discounted-price']")
@@ -72,15 +82,21 @@ def check_prices(table):
 
                     now = datetime.datetime.now()
                     time_string = now.strftime("%H:%M:%S")
-                    table.add_row(time_string, product_name.text, normal_price_text, discount_price_text)
+                    table.add_row(
+                        time_string,
+                        product_name.text,
+                        normal_price_text,
+                        discount_price_text,
+                    )
                     console.clear()
                     console.print(table)
                     time.sleep(1)
                 else:
                     print("Failed to fetch the page")
         except Exception as e:
-            print(e)
+            raise Exception(e)
         time.sleep(900)
+
 
 def build_table():
     table = Table(show_header=True, header_style="bold magenta")
@@ -90,10 +106,10 @@ def build_table():
     table.add_column("Discount Price", justify="right", style="green")
     return table
 
+
 def main():
-    table = build_table()
-    console.print(table)
-    check_prices(table)
+    check_prices()
+
 
 if __name__ == "__main__":
     main()
